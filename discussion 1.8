@@ -1,0 +1,104 @@
+4 labs
+2 minilabs
+
+1 desgin problem
+
++ Newlab 1+4
++ same minilab 1+2
++ lab 2+3 may change
+
+1: shell command execution
+	using C programming
+	system calls: fork, execvp, pip, dup2, waitpid
+
+
+./simpsh
+	--rdonly a \
+	--creat --trunc --wronly b \
+	--creat --append --wronly c \ 
+	--command 0 1 2 cat \
+	--wait 
+
+	should be translated to shell command: cat <a >b 2>>c
+
+
+./simpsh \
+	--rdonly a \ (0)     <a
+	--pipe \             2 -> 1
+	--pipe \             4 -> 3
+	--creat --tranc --wronly c \     (5) >c
+	--creat --append --wronly d \     (6) 2>>d
+	--command 0 20 6 sort \  		 (sort<a | cat b - | tr A-Z a-z >c) 2>>d
+	--command 1 4 6 cat b - \			
+	--command 3 5 6 tr A-Z a-z \
+	--wait
+
+execvp(const char *file, char *const argv[])
+fork
+vfork: blocks parent process until lchild process finishes
+
+waidpid(pid, &status, 0); 
+Third argument:
+WNOHANG: just pull the status of child process back, not really wait
+
+(sys/wait.h) WEXITSTATUS(status)  <=>  status & 0xff
+
+cat abc | sort 
+
+    parent
+      |
+      |
+ child/\child  
+cat ab->sort
+      |
+      |
+parent continues
+
+(cat < foo.txt | sort >out.txt) 2>> err.txt
+
+implementation of command above:
+
+int main() {													0644:file permission
+	int err_fd = open("err.txt", O_CREAT | O_APPEND | O_WRONLY, 644);
+	
+	int fd[2];
+    pipe(fd);
+    int firstpid = fork();
+    if (firstpid==0){
+        close(fd[1]); //close unused write end
+        dup2(fd[0], 0);
+        int fd = open("out.txt", O_CREAT | O_TRUNC | O_WRONLY, 0644);
+        dup2(fd, 1);
+        dup2(err_fd, 2);
+        char *a[] = {"sort", 0};
+        execvp(a[0], a);
+        exit(0);
+    }
+    else{
+        int secondpid = fork();
+        if (secondpid==0){
+            close(fd[0]);
+            dup2(fd[1], 1);
+            int fd = open("foo.txt", O_RDONLY);
+            dup2(fd,0);
+            dup2(err_fd, 2);
+            char* a[] = {"cat", 0};
+            execvp(a[0], a);
+        }
+        else{
+            close(fd[0]);
+            close(fd[1]);
+            int status;
+            int returnedpid = waitpid(-1, &status, 0);
+            if (returnedpid==secondpid){
+                waitpid(firstpid, &status, 0);
+                //….
+            }
+            if (returnedpid==firstpid){
+                waitpid(secondpid, &status, 0);
+                //….
+            }
+        }
+    }
+}
+
