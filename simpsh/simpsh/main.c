@@ -28,7 +28,10 @@ int nextfd = 0; //next file descriptor to allocate
 int nextjob = 0;
 struct file_d {              /* The internal file descriptor */
     int fd;                 /* system level file descriptor */
+    int peer; //if file descriptor is one end of pipe, peer will store the file descriptor of another end. It will be sent to -1 by default
 };
+
+//typedef int file_d;
 
 struct job_d {
     int pid;
@@ -41,8 +44,8 @@ struct job_d {
 struct file_d fd_list[MAXFD]; /* The file descriptor list */
 struct job_d job_list[MAXJOB];
 
-int addfd(int fd);
-
+int addfd(int fd, int peer);
+int addjob(struct job_d newjob);
 
 int main (int argc, char **argv)
 {
@@ -61,10 +64,11 @@ int main (int argc, char **argv)
             {"rdonly",  required_argument, 0, 'r'},
             {"wronly",  required_argument, 0, 'w'},
             {"command", required_argument, 0, 'c'},
+            {"pipe", no_argument, 0, 'p'},
             {"creat", no_argument, 0, 'e'},
             {"trunc", no_argument, 0, 't'},
             {"append",no_argument, 0, 'a'},
-            {"wait", no_argument, 0, 'p'},
+            {"wait", no_argument, 0, 'q'},
             {0, 0, 0, 0}
         };
         /* getopt_long stores the option index here. */
@@ -88,19 +92,26 @@ int main (int argc, char **argv)
 //                    printf (" with arg %s", optarg);
 //                printf ("\n");
                 break;
+            case 'p': //pipe
+                if(verbose_flag) printf("pipe\n");
+                int fd[2];
+                pipe(fd);
+                addfd(fd[0], fd[1]);
+                addfd(fd[1], fd[0]);
+                break;
             case 'w': //rdonly & wronly
                 if(verbose_flag) {
                     printf("wronly %s\n", optarg);
                 }
                 mode |= O_WRONLY;
-                addfd(open(optarg, mode, 0644));
+                addfd(open(optarg, mode, 0644), -1);
                 mode = O_RDONLY;
                 break;
             case 'r':
                 if(verbose_flag) {
                     printf("rdonly %s\n", optarg);
                 }
-                addfd(open(optarg, mode));
+                addfd(open(optarg, mode), -1);
                 mode = O_RDONLY;
                 break;
             case 'c': //command
@@ -110,7 +121,7 @@ int main (int argc, char **argv)
                 optind--;
                 struct job_d new_job_info;
                 int k=0;
-                for( ; optind<argc && *argv[optind] != '-'; optind++) {
+                for( ; optind<argc && !(*argv[optind] == '-' && *(argv[optind]+1) == '-'); optind++) {
                     if(verbose_flag) printf(" %s", argv[optind]);
                     if(k==0) new_job_info.input = atoi(argv[optind]);
                     if(k==1) new_job_info.output = atoi(argv[optind]);
@@ -119,7 +130,7 @@ int main (int argc, char **argv)
                     k++;
                 }
                 if(verbose_flag) printf("\n");
-                job_list[nextjob++] = new_job_info;
+                addjob(new_job_info);
                 break;
             case 'e': //creat
                 if(verbose_flag) printf("creat\n");
@@ -133,36 +144,40 @@ int main (int argc, char **argv)
                 if(verbose_flag) printf("append\n");
                 mode |= O_APPEND;
                 break;
-            case 'p':
+            case 'q':
                 if(verbose_flag) printf("wait\n");
                 for(scanfile=0; scanfile<nextjob; scanfile++) {
-                    dup2(fd_list[job_list[scanfile].input].fd, 0);
-                    dup2(fd_list[job_list[scanfile].output].fd, 1);
-                    dup2(fd_list[job_list[scanfile].errorput].fd, 2);
                     curpid = fork();
                     if(curpid == 0) { //child process
+                        if(fd_list[job_list[scanfile].input].peer > 0) {
+                            close(fd_list[job_list[scanfile].input].peer);
+                        }
+                        dup2(fd_list[job_list[scanfile].input].fd, 0);
+                        if(fd_list[job_list[scanfile].output].peer > 0) {
+                            close(fd_list[job_list[scanfile].output].peer);
+                        }
+                        dup2(fd_list[job_list[scanfile].output].fd, 1);
+                        dup2(fd_list[job_list[scanfile].errorput].fd, 2);
                         execvp(job_list[scanfile].pro_info[0],job_list[scanfile].pro_info);
                         break;
                     } else { //parent process
                         job_list[scanfile].pid = curpid;
-                        waitpid(curpid, &status, 0);
-                        close(fd_list[job_list[scanfile].input].fd);
-                        close(fd_list[job_list[scanfile].output].fd);
-                        close(fd_list[job_list[scanfile].errorput].fd);
                     }
                 }
                 if(scanfile == nextjob)  {//top parent process
-                
+                    for(int i=0; i<nextfd; i++) {
+                        close(fd_list[i].fd);
+                    }
+                    int pid_count=0;
+                    while(pid_count < nextjob) {
+                        waitpid(-1, &status, 0);
+                        pid_count++;
+                    }
                 }
                 break;
             case '?':
                 if (optopt == 'c' || optopt == 'r' || optopt == 'w')
                     fprintf (stderr, "Option -%c requires an argument.\n", optopt);
-//                else
-//                    fprintf (stderr,
-//                             "Unknown option --%s.\n",
-//                             argv[optind-1]);
-//                return 1;
                 break;
             default:
                 abort ();
@@ -173,14 +188,22 @@ int main (int argc, char **argv)
     exit (0);
 }
 
-int addfd(int fd) {
+int addfd(int fd, int peer) {
     if(fd<0) return 0;
     if(fd>MAXFD) {
         printf("Tried to open too many files.");
         return 0;
     }
-    struct file_d new_file_descriptor = {fd};
-    fd_list[nextfd] = new_file_descriptor;
-    nextfd++;
+    struct file_d new_file_descriptor = {fd, peer};
+    fd_list[nextfd++] = new_file_descriptor;
+    return 1;
+}
+
+int addjob(struct job_d newjob) {
+    if(nextjob>MAXJOB) {
+        printf("Tried to run too mand commands.");
+        return 0;
+    }
+    job_list[nextjob++] = newjob;
     return 1;
 }

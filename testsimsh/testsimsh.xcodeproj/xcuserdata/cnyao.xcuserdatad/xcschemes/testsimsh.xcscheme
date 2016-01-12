@@ -14,10 +14,10 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "23FC0D6F1C419E1100749903"
-               BuildableName = "simpsh"
-               BlueprintName = "simpsh"
-               ReferencedContainer = "container:simpsh.xcodeproj">
+               BlueprintIdentifier = "234FEF3D1C42D58200304323"
+               BuildableName = "testsimsh"
+               BlueprintName = "testsimsh"
+               ReferencedContainer = "container:testsimsh.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -32,10 +32,10 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "23FC0D6F1C419E1100749903"
-            BuildableName = "simpsh"
-            BlueprintName = "simpsh"
-            ReferencedContainer = "container:simpsh.xcodeproj">
+            BlueprintIdentifier = "234FEF3D1C42D58200304323"
+            BuildableName = "testsimsh"
+            BlueprintName = "testsimsh"
+            ReferencedContainer = "container:testsimsh.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <AdditionalOptions>
@@ -47,7 +47,7 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
       useCustomWorkingDirectory = "YES"
-      customWorkingDirectory = "/Users/cnyao/Documents/study/CS111/simpsh/simpsh"
+      customWorkingDirectory = "/Users/cnyao/Documents/study/CS111/testsimsh/testsimsh"
       ignoresPersistentStateOnLaunch = "NO"
       debugDocumentVersioning = "YES"
       debugServiceExtension = "internal"
@@ -56,29 +56,12 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "23FC0D6F1C419E1100749903"
-            BuildableName = "simpsh"
-            BlueprintName = "simpsh"
-            ReferencedContainer = "container:simpsh.xcodeproj">
+            BlueprintIdentifier = "234FEF3D1C42D58200304323"
+            BuildableName = "testsimsh"
+            BlueprintName = "testsimsh"
+            ReferencedContainer = "container:testsimsh.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
-      <CommandLineArguments>
-         <CommandLineArgument
-            argument = "--verbose --rdonly foo.txt --pipe --pipe --creat --trunc --wronly out.txt --creat --append --wronly err.txt --command 0 2 6 sort --command 1 4 6 cat test - --command 3 5 6 tr A-Z a-z --wait"
-            isEnabled = "YES">
-         </CommandLineArgument>
-         <CommandLineArgument
-            argument = ""
-            isEnabled = "NO">
-         </CommandLineArgument>
-      </CommandLineArguments>
-      <EnvironmentVariables>
-         <EnvironmentVariable
-            key = "FileRoute"
-            value = "/Users/cnyao/Documents/study/CS111/simpsh/simpsh/"
-            isEnabled = "NO">
-         </EnvironmentVariable>
-      </EnvironmentVariables>
       <AdditionalOptions>
       </AdditionalOptions>
    </LaunchAction>
@@ -92,10 +75,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "23FC0D6F1C419E1100749903"
-            BuildableName = "simpsh"
-            BlueprintName = "simpsh"
-            ReferencedContainer = "container:simpsh.xcodeproj">
+            BlueprintIdentifier = "234FEF3D1C42D58200304323"
+            BuildableName = "testsimsh"
+            BlueprintName = "testsimsh"
+            ReferencedContainer = "container:testsimsh.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

@@ -1,3 +1,37 @@
+cs 111
+
+hours per work
+4 lecture 2 lab(discussion) 9 outside study
+
+http://web.cs.ucla.edu/classes/winter16/cs111/
+
+http://web.cs.ucla.edu/classes/enroll/
+
+Course organization + grading
+
+17 lectures
+1 midterm(during lecture) 100 minutes 1/9 to total grades
+1 final 180 minutes 2/9 to total grades
+4 labs (teams of 2) 1/12 each
+	shell, (kernel hacking, files system, networking) may change
+
+minilabs (individual) 2/15
+ 	scheduling, VM
+
+Design proglem (lab extension, teams) (written report) 1/12
+
+2-3 page paper on a contemporary OS topic 1/15
+
+scribe notes (groups of up to 4) 1/20
+
+Exams: Open book + notes + bring copy of all lab assignments
+
+Lateness penalty: 2^N-1 points for N days late (or fraction) deadline: 23:55
+
+Text: 
+Saltzer & Koashoek
+Principles of computer system design
+
 4 labs
 2 minilabs
 
