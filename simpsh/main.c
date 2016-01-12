@@ -89,7 +89,7 @@ int main (int argc, char **argv)
         
         c = getopt_long (argc, argv, "",
                          long_options, &option_index);
-        
+    
         /* Detect the end of the options. */
         if (c == -1)
             break;
@@ -98,7 +98,7 @@ int main (int argc, char **argv)
         {
             case 0:
                 break;
-            case 'w': //rdonly & wronly
+            case 'w':
                 k=0;
                 for( ; optind<argc && !(*argv[optind] == '-' && *(argv[optind]+1) == '-'); optind++) k++;
                 if(k>=2) fprintf(stderr, "Warnning: --wronly: Too many arguments. Use the first one.\n");
@@ -131,13 +131,13 @@ int main (int argc, char **argv)
                 mode = O_RDONLY;
                 break;
             case 'c': //command
+                k=0;
+                flag = 0;
                 struct job_d new_job_info;
                 new_job_info.input = 0;
                 new_job_info.output = 0;
                 new_job_info.errorput = 0;
                 new_job_info.pro_info = (char**)malloc(sizeof(char**)*maxpara);
-                k=0;
-                flag = 0;
                 for( ; optind<argc && !(*argv[optind] == '-' && *(argv[optind]+1) == '-'); optind++) {                    if(k==0) {
                         if(judgenumber(argv[optind]) < 0) {
                             fprintf(stderr, "--command: %s: Argument invalid\n", argv[optind]);
