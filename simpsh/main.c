@@ -107,7 +107,7 @@ int main (int argc, char **argv)
                     break;
                 }
                 if(verbose_flag) {
-                    printf("--wronly %s\n", optarg);
+                    printf("--wronly %s\n", argv[optind-1]);
                 }
                 mode |= O_WRONLY;
                 fd = open(argv[optind-1], mode, 0644);
@@ -123,10 +123,10 @@ int main (int argc, char **argv)
                     break;
                 }
                 if(verbose_flag) {
-                    printf("--rdonly %s\n", optarg);
+                    printf("--rdonly %s\n", argv[optind-1]);
                 }
                 fd = open(argv[optind-1], mode);
-                if(fd<0) {fprintf(stderr,"--rdonly: %s: No such file\n", optarg);}
+                if(fd<0) {fprintf(stderr,"--rdonly: %s: No such file\n", argv[optind-1]);}
                 addfd(fd);
                 mode = O_RDONLY;
                 break;
