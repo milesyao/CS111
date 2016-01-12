@@ -216,21 +216,21 @@ int main (int argc, char **argv)
                 k=0;
                 for( ; optind<argc && !(*argv[optind] == '-' && *(argv[optind]+1) == '-'); optind++) k++;
                 if(k>=1) fprintf(stderr, "Warnning: --creat: Too many arguments.\n");
-                if(verbose_flag) printf("--creat\n");
+                if(verbose_flag) printf("--creat ");
                 mode |= O_CREAT;
                 break;
             case 't': //trunc
                 k=0;
                 for( ; optind<argc && !(*argv[optind] == '-' && *(argv[optind]+1) == '-'); optind++) k++;
                 if(k>=1) fprintf(stderr, "Warnning: --trunc: Too many arguments.\n");
-                if(verbose_flag) printf("--trunc\n");
+                if(verbose_flag) printf("--trunc ");
                 mode |= O_TRUNC;
                 break;
             case 'a': //append
                 k=0;
                 for( ; optind<argc && !(*argv[optind] == '-' && *(argv[optind]+1) == '-'); optind++) k++;
                 if(k>=1) fprintf(stderr, "Warnning: --append: Too many arguments.\n");
-                if(verbose_flag) printf("--append\n");
+                if(verbose_flag) printf("--append ");
                 mode |= O_APPEND;
                 break;
             case 'b': //cloxexec
