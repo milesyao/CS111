@@ -19,9 +19,24 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#define MAXFD 10 //subject to change
-#define MAXJOB 10 //subject to change
-#define MAXPARA 10 //max parameters for a job
+#define MAXFD 1024 //subject to change
+#define MAXJOB 100 //subject to change
+#define MAXPARA 100 //max parameters for a job
+
+#define RDONLY 'a'
+#define WRONLY 'b'
+#define COMMAND 'c'
+#define CREAT 'd'
+#define TRUNC 'e'
+#define APPEND 'f'
+#define CLOXEXEC 'g'
+#define DIRECTORY 'h'
+#define DSYNC 'i'
+#define EXCL 'j'
+#define NOFOLLOW 'k'
+#define NONBLOCK 'l'
+#define RSYNC 'm'
+#define SYNC 'n'
 
 
 static int verbose_flag;
@@ -68,20 +83,20 @@ int main (int argc, char **argv)
         {
             /* These options set a flag. */
             {"verbose", no_argument, &verbose_flag, 1},
-            {"rdonly",  optional_argument, 0, 'r'},
-            {"wronly",  optional_argument, 0, 'w'},
+            {"rdonly",  optional_argument, 0, 'a'},
+            {"wronly",  optional_argument, 0, 'b'},
             {"command", optional_argument, 0, 'c'},
-            {"creat", no_argument, 0, 'e'},
-            {"trunc", no_argument, 0, 't'},
-            {"append",no_argument, 0, 'a'},
-            {"cloexec",no_argument, 0, 'b'},
-            {"directory",no_argument, 0, 'd'},
-            {"dsync",no_argument, 0, 'f'},
-            {"excl",no_argument, 0, 'g'},
-            {"nofollow",no_argument, 0, 'h'},
-            {"nonblock",no_argument, 0, 'i'},
-            {"rsync",no_argument, 0, 'j'},
-            {"sync",no_argument, 0, 'k'},
+            {"creat", no_argument, 0, 'd'},
+            {"trunc", no_argument, 0, 'e'},
+            {"append",no_argument, 0, 'f'},
+            {"cloexec",no_argument, 0, 'g'},
+            {"directory",no_argument, 0, 'h'},
+            {"dsync",no_argument, 0, 'i'},
+            {"excl",no_argument, 0, 'j'},
+            {"nofollow",no_argument, 0, 'k'},
+            {"nonblock",no_argument, 0, 'l'},
+            {"rsync",no_argument, 0, 'm'},
+            {"sync",no_argument, 0, 'n'},
             {0, 0, 0, 0}
         };
         /* getopt_long stores the option index here. */
@@ -98,7 +113,7 @@ int main (int argc, char **argv)
         {
             case 0:
                 break;
-            case 'w':
+            case WRONLY:
                 k=0;
                 for( ; optind<argc && !(*argv[optind] == '-' && *(argv[optind]+1) == '-'); optind++) k++;
                 if(k>=2) fprintf(stderr, "Warnning: --wronly: Too many arguments. Use the first one.\n");
@@ -114,7 +129,7 @@ int main (int argc, char **argv)
                 addfd(fd);
                 mode = O_RDONLY;
                 break;
-            case 'r':
+            case RDONLY:
                 k=0;
                 for( ; optind<argc && !(*argv[optind] == '-' && *(argv[optind]+1) == '-'); optind++) k++;
                 if(k>=2) fprintf(stderr, "Warnning: --rdonly: Too many arguments. Use the first one.\n");
@@ -130,7 +145,7 @@ int main (int argc, char **argv)
                 addfd(fd);
                 mode = O_RDONLY;
                 break;
-            case 'c': //command
+            case COMMAND: //command
                 k=0;
                 flag = 0;
                 struct job_d new_job_info;
@@ -212,77 +227,77 @@ int main (int argc, char **argv)
                     job_list[nextjob-1].pid = curpid;
                 }
                 break;
-            case 'e': //creat
+            case CREAT: //creat
                 k=0;
                 for( ; optind<argc && !(*argv[optind] == '-' && *(argv[optind]+1) == '-'); optind++) k++;
                 if(k>=1) fprintf(stderr, "Warnning: --creat: Too many arguments.\n");
                 if(verbose_flag) printf("--creat ");
                 mode |= O_CREAT;
                 break;
-            case 't': //trunc
+            case TRUNC: //trunc
                 k=0;
                 for( ; optind<argc && !(*argv[optind] == '-' && *(argv[optind]+1) == '-'); optind++) k++;
                 if(k>=1) fprintf(stderr, "Warnning: --trunc: Too many arguments.\n");
                 if(verbose_flag) printf("--trunc ");
                 mode |= O_TRUNC;
                 break;
-            case 'a': //append
+            case APPEND: //append
                 k=0;
                 for( ; optind<argc && !(*argv[optind] == '-' && *(argv[optind]+1) == '-'); optind++) k++;
                 if(k>=1) fprintf(stderr, "Warnning: --append: Too many arguments.\n");
                 if(verbose_flag) printf("--append ");
                 mode |= O_APPEND;
                 break;
-            case 'b': //cloxexec
+            case CLOXEXEC: //cloxexec
                 k=0;
                 for( ; optind<argc && !(*argv[optind] == '-' && *(argv[optind]+1) == '-'); optind++) k++;
                 if(k>=1) fprintf(stderr, "Warnning: --cloxexec: Too many arguments.\n");
                 if(verbose_flag) printf("--cloxexec\n");
                 mode |= O_CLOEXEC;
                 break;
-            case 'd': //directory
+            case DIRECTORY: //directory
                 k=0;
                 for( ; optind<argc && !(*argv[optind] == '-' && *(argv[optind]+1) == '-'); optind++) k++;
                 if(k>=1) fprintf(stderr, "Warnning: --directory: Too many arguments.\n");
                 if(verbose_flag) printf("--directory\n");
                 mode |= O_DIRECTORY;
                 break;
-            case 'f': //dsync
+            case DSYNC: //dsync
                 k=0;
                 for( ; optind<argc && !(*argv[optind] == '-' && *(argv[optind]+1) == '-'); optind++) k++;
                 if(k>=1) fprintf(stderr, "Warnning: --dsync: Too many arguments.\n");
                 if(verbose_flag) printf("--dsync\n");
                 mode |= O_DSYNC;
                 break;
-            case 'g': //excl
+            case EXCL: //excl
                 k=0;
                 for( ; optind<argc && !(*argv[optind] == '-' && *(argv[optind]+1) == '-'); optind++) k++;
                 if(k>=1) fprintf(stderr, "Warnning: --excl: Too many arguments.\n");
                 if(verbose_flag) printf("--excl\n");
                 mode |= O_EXCL;
                 break;
-            case 'h': //nofollow
+            case NOFOLLOW: //nofollow
                 k=0;
                 for( ; optind<argc && !(*argv[optind] == '-' && *(argv[optind]+1) == '-'); optind++) k++;
                 if(k>=1) fprintf(stderr, "Warnning: --nofollow: Too many arguments.\n");
                 if(verbose_flag) printf("--nofollow\n");
                 mode |= O_NOFOLLOW;
                 break;
-            case 'i': //nonblock
+            case NONBLOCK: //nonblock
                 k=0;
                 for( ; optind<argc && !(*argv[optind] == '-' && *(argv[optind]+1) == '-'); optind++) k++;
                 if(k>=1) fprintf(stderr, "Warnning: --nonblock: Too many arguments.\n");
                 if(verbose_flag) printf("--nonblock\n");
                 mode |= O_NONBLOCK;
                 break;
-            case 'j': //rsync
+            case RSYNC: //rsync
                 k=0;
                 for( ; optind<argc && !(*argv[optind] == '-' && *(argv[optind]+1) == '-'); optind++) k++;
                 if(k>=1) fprintf(stderr, "Warnning: --rsync: Too many arguments.\n");
                 if(verbose_flag) printf("--rsync\n");
                 mode |= O_RSYNC;
                 break;
-            case 'k': //sync
+            case SYNC: //sync
                 k=0;
                 for( ; optind<argc && !(*argv[optind] == '-' && *(argv[optind]+1) == '-'); optind++) k++;
                 if(k>=1) fprintf(stderr, "Warnning: --sync: Too many arguments.\n");

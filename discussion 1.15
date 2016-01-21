@@ -1,0 +1,76 @@
+Mid term: Go to Tuan's office hour and discussion
+
+Mini Lab 1
+
+types.h: just read, no need to change
+lib.h: use mempcy
+mpos.h: 
+mpos-app.c, mpos-app2.c: applications
+mpos_kern: struct process
+mpos_kern.c: most time spent here; system calls & kernel functions
+
+Q1: the ea register of the current process will not be modified by other process invoked by shchedule()
+
+
+-----------
+child
+if(child->p_state == P_EMPTY) {
+	break;
+}
+
+child->p_registers = parent->registers;
+copy_stack(child, parent);
+child->p_state = P_RUNNABLE;
+child->p_regisers.reg_eax = 0;
+return child->p_pid;
+
+copy_stack:
+src_stack_top = PROC1_STACK_ADDR + (PROC_STACK_SIZE)*(src->p_pid);
+
+desk_stack_bottom = dest_stack_top + (src_stack_botton - src_stack_top);
+
+memcpy();
+
+---------------
+
+syswait: no block, just return status
+polling approach. Can reduce CPU utilization
+=>exercise 3:
+
+typedef struct process {
+	....
+	//+
+	pid_t waiting_pid; (the pid that the process is waiting for)
+}
+a process can be waited by many processes
+
+change waiting_pid
+then change the status of the parent process to blocked
+current->p_state=P_BLOCKED
+current->waiting_pid=p;
+
+//wake the parent process
+change states to runnable
+//put the parent eax register the current process's exit status
+parent->p_registers.reg_eax = current->p_exit_status;
+change waiting pid to default value
+
+exercise 4:
+change status zombie to empty
+
+extra credit: exercise 5 difficult
+
+**************
+Lab1 b
+no dup2 in parent process
+pipe(int pipefd[2]);
+
+Defined by system:
+pipefd[1]: WRITE
+pipefd[0]: READ
+CLSOE UNUSED PIPE FD!
+=>READ can meet EOF only if the WRITE end is closed
+
+
+
+

@@ -1,9 +1,7 @@
-
-
 CC = gcc
 CFLAGS = -Wall -O
-SRCS = main.c
-AUX = Makefile
+SRCS = main.c 
+AUX = Makefile test.sh README
 
 all: 
 	${CC} ${CFLAGS} ${SRCS} -o simpsh
@@ -14,6 +12,10 @@ dist: ${SRCS} ${AUX}
 	ln ${SRCS} ${AUX} `cat .fname`
 	tar -czf `cat .fname`.tar.gz `cat .fname`
 	-rm -rf `cat .fname`
+
+check:
+	sh test.sh
+	@echo "Test Finish."
 
 clean:
 	rm simpsh

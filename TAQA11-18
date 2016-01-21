@@ -1,0 +1,18 @@
+--abort 
+cause the program to send a segmentation fault. 
+int *a = NULL;
+int b = *a   sigsegv
+(However 10/0  SIGFPE)
+
+KILL -S sigsegv PDI : EXTERNAL SIGNAL
+
+violation signal
+
+
+internal seg-fault(reexecute) vs internal non-seg signal(non violating signal, jump to exit instruciton)
+in --option manually divide them
+
+external segmentation (non-reexecute)
+
+stack (4 unit operation, align) top pointer saves nothing) esp value must be times of 4
+

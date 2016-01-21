@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>UCLA CS 111 Scribe Notes - Lecture 4</title>
+<meta charset="utf-8"/>
+</head>
+<body>
+
+<h1 style="text-align:center">CS 111 Scribe Notes</h1>
+<h1 style="text-align:center">Lecture 4: OS organization</h1>
+<h1 style="text-align:center">Presented: Wednesday, January 13<sup>th</sup>, 2016</h1>
+<h4 style="text-align:center">By Chunnan Yao,Yihai Dingzhou, Jiaqi Huo, Jiahao Zhang</h4>
+
+
+<p>This lecture picks up the concept of Modularity from last lecture and further divides it into two categories: soft modularity and hard modularity. From that, the lecture defines "Process" that utilizes hard modularity to enforce their independent share of computing resources.
+</p>
+
+<h2>1.1 Booting</h2>
+<p>Booting itself conforms to the concept of modularity. Firmware (BIOS or UEFI) is separated from disk or flash (identified by GUID: Globally Unique Identification). Pre-loaded booting program guides the OS to run via certain configurations. So the next question is how to enforce modularity after booting in OS? There are two options, hard modularity and soft modularity.</p>
+
+<h2>1.2 Soft Modularity</h2>
+<p>Assume we want to write a function to implement fact.</p>
+<pre>
+<code>
+int fact(int n) {
+if(n) return 1;
+return n*fact(n-1);
+}
+</code>
+</pre>
+<p>
+Or if we have already know the answer and store them in an array.</p>
+<pre>
+<code>
+int fact(int n) {
+return factable[n];
+}
+</code>
+</pre>
+<p>
+The x86 assembly code of fact() (with some added comments) is like follows:</p>
+<pre>
+<code>
+fact:
+	pushl		%ebp			//push ebp onto stack
+	movl		%esp,%ebp		//ebp now point to top of stack
+	subl		$16,%esp		//allocate 16 bytes on top of stack
+	movl		%edi,-4(%ebp)	//store edi on stack(see L1 for restoring)
+	cmpl		%0,-4(%ebp)		//in case
+	jne		.L2
+	movl		$1,%eax			//if n=0, return eax=1
+	jmp		.L3	
+
+.L2	
+	movl		-4(%ebp),%eax	//store old ebp
+	subl		$1,%eax			//eax = eax-1
+	movl		%eax,%edi		//store eax (new ebp for next loop)
+	call fact					//loop
+	imull		-4(%ebp),%eax	//eax = eax * ebp = eax * eax+1
+
+.L3
+	leave						//bye
+	ret
+</code>
+</pre>
+<p>
+For the leave function, esp=ebp, ebp=*esp++;
+<br>The stack of fact() function can be understand as 5 steps like follows (figure 1).
+</p>
+<div style="text-align:center">
+<img src="./img/image001.png" alt="figure 1"/>
+<p style="text-align:center">Figure 1</p>
+</div>
+<div style="text-align:center">
+<img src="./img/image002.png" alt="figure 2"/>
+<p style="text-align:center">Figure 2</p>
+</div>
+<p>
+However, this code is inefficient.<br>
+Things can go wrong, for example, when we call:</p>
+<pre>
+<code>
+fact(-1);
+fact(50);
+fact(INT_MIN);
+fact(1000000000000);
+</code>
+</pre>
+<p>
+When we call <code>fact(50)</code>, the bottom 32 bits will get incorrect answer. As for fact(INT_MIN) and fact(1000000000000), the stack will keep going until the stack overflow. The way to solve it is to check every step to make sure there still some room left but will make the program slow. Another way is to use virtue memory.<br>
+To conclude, the soft modularity doesn’t scale to large apps.<br>
+To avoid this, we can use<br>
+</p>
+<ul>
+  <li>client-server method, but it is slow; </li>
+  <li>virtualization. (Unidirectional hard modularity. Applications will be victims of kernel). </li>
+</ul>
+
+
+<h2>1.3 Hard Modularity</h2>
+<h3>1.3.1 Simplest Way</h3>
+<p>
+We can write a simulator for the machine that the applications run on. For this implementation, we should take care of certain instructions that cause halt and address out-of-range. We would also need to count instructions. When it reaches a limit, we would need to trigger a return and let the kernel judge which virtual machine that instruction should run. <br>
+All these things makes this simulated machine too slow to be put into production. Therefore we need a virtualizable processor to boost performance. 
+</p>
+<h3>1.3.2 Processor With Virtualization</h3>
+<p>
+Idea: divide instructions into two classes. We need to trigger a protected transfer of control from application to kernel for privileged instructions. As such instructions are rare, this method would be efficient. As described in figure 3, figure 4.
+</p>
+<div style="text-align:center">
+<img src="./img/image003.png" alt="figure 3"/>
+<p style="text-align:center">Figure 3</p>
+</div>
+<div style="text-align:center">
+<img src="./img/image004.png" alt="figure 4"/>
+<p style="text-align:center">Figure 4</p>
+</div>
+
+<h3>1.3.3 Ways to enter the kernel</h3>
+<p>
+Classic: Execute a privileged instructions with a standard convention:</p>
+<pre>
+<code>
+int 128 hw
+push ss, esp , eflags, cs code segment, eip
+</code>
+</pre>
+<p>
+Then kernel code runs and effects errno. And finally runs “rti” to get out of kernel mode.<br>
+Nowadays: Use a system call and copy the data that kernel needs into registers. And after execution, destroy these data and copy result to %rax and change errno accordingly. This implementation exploits registers’ higher read/write performance to get better performance than memory stack manipulation.
+</p>
+
+<h3>1.3.4 Mechanism Works</h3>
+<p>Process is a program running in a virtual machine on top of operating system.<br> Creation:</p>
+<pre>
+<code>
+pid_t fork(void);
+</code>
+</pre>
+<p>
+clones current process. It returns childpid to parent, and returns -1 if failure, for example, no enough resources.
+<br>The following code is called fork bombs.
+</p>
+<pre>
+<code>
+while(1) fork; 
+</code>
+</pre>
+<p>
+We call exit() function to stop running a process like follows:
+</p>
+<pre>
+<code>
+void_noreturn_exit(int);
+</code>
+</pre>
+<p><code>waitpid()</code> function is defined as follows:</p>
+<pre>
+<code>
+pid_t waitpid(pid_t id, int status, in flags)
+</code>
+</pre>
+<p>Destroy:</p>
+<pre>
+<code>
+pid_t waitpid(pid_t pid, int *status, int flags);
+</code>
+</pre>
+</body>
+</html>
