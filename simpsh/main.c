@@ -19,6 +19,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <signal.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 
 #define MAXFD 1024 //subject to change
 #define MAXJOB 100 //subject to change
@@ -48,7 +50,9 @@
 #define PAUSE 'v'
 
 
+
 static int verbose_flag;
+static int profile_flag;
 int nextfd = 0; //next file descriptor to allocate
 int nextjob = 0;
 int maxfd = MAXFD;
@@ -75,6 +79,7 @@ int addfd(struct file_d FileDescriptor);
 int addjob(struct job_d newjob);
 int judgenumber(const char* str);
 void simpsh_handler(int signum);
+double timeconvert(struct timeval *before, struct timeval *after);
 
 
 int main (int argc, char **argv)
@@ -85,6 +90,8 @@ int main (int argc, char **argv)
     int fd;
     int k;
     int flag;
+    verbose_flag = 0;
+    profile_flag = 0;
     
     fd_list = (struct file_d*)malloc(sizeof(struct file_d) * maxfd);
     job_list = (struct job_d*)malloc(sizeof(struct job_d) * maxjob);
@@ -116,6 +123,7 @@ int main (int argc, char **argv)
             {"ignore", optional_argument, 0, 't'},
             {"default", optional_argument, 0, 'u'},
             {"pause", no_argument, 0, 'v'},
+            {"profile", no_argument, &profile_flag, 1},
             {0, 0, 0, 0}
         };
         /* getopt_long stores the option index here. */
@@ -169,7 +177,16 @@ int main (int argc, char **argv)
                 if(fd<0) {fprintf(stderr,"--rdonly: %s: No such file\n", argv[optind-1]);}
                 mode = O_RDONLY;
                 break;
-            case COMMAND: //command
+            case COMMAND: {//command
+                int successgetcpu = 1;
+                int successgetwall = 1;
+                struct rusage parentcpubefore;
+                struct rusage parentcpuafter;
+                struct timeval parentwallbefore;
+                struct timeval parentwallafter;
+
+                if(getrusage(RUSAGE_SELF, &parentcpubefore) != 0) successgetcpu = 0;
+                if(gettimeofday(&parentwallbefore, NULL) != 0) successgetwall = 0;
                 k=0;
                 flag = 0;
                 struct job_d new_job_info;
@@ -240,24 +257,85 @@ int main (int argc, char **argv)
                 }
                 curpid = fork();
                 if(curpid == 0) { //child process
-                    dup2(fd_list[new_job_info.input].fd, 0);
-                    dup2(fd_list[new_job_info.output].fd, 1);
-                    dup2(fd_list[new_job_info.errorput].fd, 2);
-                    
-                    //we've already redirected fd to 0, 1, 2. So just close all fds other than 0 1 2
-                    //to ensure the correctness of pipe
-                    for(k=0; k < nextfd; k++) close(fd_list[k].fd);
-                    
-                    execvp(new_job_info.pro_info[0],new_job_info.pro_info);
-                    perror("--command: Execvp failed");
-                    exit(-1);
+                    curpid = fork();
+                    int childwallsucess = 1;
+                    int childcpusucess = 1;
+                    struct timeval childwallbefore;
+                    struct timeval childwallafter;
+                    struct rusage childcpubefore;
+                    struct rusage childcpuafter;
+                    int status;
+                    if(gettimeofday(&childwallbefore, NULL) != 0) childwallsucess = 0;
+                    if(getrusage(RUSAGE_CHILDREN, &childcpubefore) != 0) childcpusucess = 0;
+                    if(curpid == 0) {
+                        dup2(fd_list[new_job_info.input].fd, 0);
+                        dup2(fd_list[new_job_info.output].fd, 1);
+                        dup2(fd_list[new_job_info.errorput].fd, 2);
+                        
+                        //we've already redirected fd to 0, 1, 2. So just close all fds other than 0 1 2
+                        //to ensure the correctness of pipe
+                        for(k=0; k < nextfd; k++) close(fd_list[k].fd);
+                        
+                        execvp(new_job_info.pro_info[0],new_job_info.pro_info);
+                        perror("--command: Execvp failed");
+                        exit(-1);
+                    }
+                    waitpid(curpid, &status, 0);
+                    if(gettimeofday(&childwallafter, NULL) != 0) childwallsucess = 0;
+                    if(getrusage(RUSAGE_CHILDREN, &childcpuafter) != 0) childcpusucess = 0;
+                    if(profile_flag) {
+                        if(childwallsucess) {
+                            printf("Child process wall time: %f\n", timeconvert(&childwallbefore, &childwallafter));
+                        } else {
+                            printf("Failed to get child process wall time info. \n");
+                        }
+                        
+                        if(childcpusucess) {
+                            printf("Child process user cpu time: %f\n", timeconvert(&childcpubefore.ru_utime, &childcpuafter.ru_stime));
+                            printf("Child process system cpu time: %f\n", timeconvert(&childcpubefore.ru_stime, &childcpuafter.ru_stime));
+                        } else {
+                            printf("Failed to get child process cpu time info. \n");
+                        }
+                    }
+                    exit(status);
                     break;
                 } else { //parent process
                     job_list[nextjob-1].pid = curpid;
                 }
+                if(getrusage(RUSAGE_SELF, &parentcpuafter) != 0) successgetcpu = 0;
+                if(gettimeofday(&parentwallafter, NULL) != 0) successgetwall = 0;
+                
+                if(profile_flag) {
+                    if(successgetcpu == 1) {
+                        printf("User CPU time: %f\n", timeconvert(&parentcpubefore.ru_utime, &parentcpuafter.ru_utime));
+                        printf("System CPU time: %f\n", timeconvert(&parentcpubefore.ru_stime, &parentcpuafter.ru_stime));
+                    } else {
+                        printf("Failed to get CPU time info.\n");
+                    }
+                    
+                    if(successgetwall == 1) {
+                        printf("Wall time: %f\n", timeconvert(&parentwallbefore, &parentwallafter));
+                    } else {
+                        printf("Failed to get wall time info.\n");
+                    }
+                }
+                
                 break;
+            }
             case WAIT:{
 //Wait for all commands to finish. As each finishes, output its exit status, and a copy of the command (with spaces separating arguments) to standard output.
+                struct rusage parentcpubefore;
+                struct rusage parentcpuafter;
+                struct rusage childcpubefore;
+                struct rusage childcpuafter;
+                struct timeval wallbefore;
+                struct timeval wallafter;
+                
+                
+                getrusage(RUSAGE_SELF, &parentcpubefore);
+                getrusage(RUSAGE_CHILDREN,&childcpubefore);
+                gettimeofday(&wallbefore, NULL);
+                
                 for(k = 0; k < nextfd; k++) {
                     close(fd_list[k].fd);
                 }
@@ -281,6 +359,9 @@ int main (int argc, char **argv)
                         }
                     }
                 }
+                if(getrusage(RUSAGE_SELF, &parentcpuafter) !=0) ;
+                getrusage(RUSAGE_CHILDREN,&childcpuafter);
+                gettimeofday(&wallafter, NULL);
                 break;
             }
             case CREAT: //creat
@@ -502,4 +583,11 @@ int judgenumber(const char* str) {
 void simpsh_handler(int signum) {
     fprintf(stderr, "%d caught\n", signum);
     exit(signum);
+}
+
+double timeconvert(struct timeval *before, struct timeval *after) {
+    double aftertime = (double)after->tv_sec + after->tv_usec/1000000;
+    double beforetime = (double)before->tv_sec + before->tv_usec/1000000;
+    
+    return aftertime - beforetime;
 }
