@@ -18,6 +18,7 @@
 #include <getopt.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <signal.h>
 
 #define MAXFD 1024 //subject to change
 #define MAXJOB 100 //subject to change
@@ -37,6 +38,14 @@
 #define NONBLOCK 'l'
 #define RSYNC 'm'
 #define SYNC 'n'
+#define PIPE 'o'
+#define WAIT 'p'
+#define ABORT 'q'
+#define CLOSE 'r'
+#define CATCH 's'
+#define IGNORE 't'
+#define DEFAULT 'u'
+#define PAUSE 'v'
 
 
 static int verbose_flag;
@@ -47,6 +56,7 @@ int maxjob = MAXJOB;
 int maxpara = MAXPARA;
 struct file_d {              /* The internal file descriptor */
     int fd;                 /* system level file descriptor */
+    int peer;
 };
 
 struct job_d {
@@ -61,9 +71,10 @@ struct job_d {
 struct file_d *fd_list; /* The file descriptor list */
 struct job_d *job_list;
 
-int addfd(int fd);
+int addfd(struct file_d FileDescriptor);
 int addjob(struct job_d newjob);
 int judgenumber(const char* str);
+void simpsh_handler(int signum);
 
 
 int main (int argc, char **argv)
@@ -97,6 +108,14 @@ int main (int argc, char **argv)
             {"nonblock",no_argument, 0, 'l'},
             {"rsync",no_argument, 0, 'm'},
             {"sync",no_argument, 0, 'n'},
+            {"pipe",no_argument, 0, 'o'},
+            {"wait", no_argument, 0, 'p'},
+            {"abort", no_argument, 0, 'q'},
+            {"close", optional_argument, 0, 'r'},
+            {"catch", optional_argument, 0, 's'},
+            {"ignore", optional_argument, 0, 't'},
+            {"default", optional_argument, 0, 'u'},
+            {"pause", no_argument, 0, 'v'},
             {0, 0, 0, 0}
         };
         /* getopt_long stores the option index here. */
@@ -108,6 +127,7 @@ int main (int argc, char **argv)
         /* Detect the end of the options. */
         if (c == -1)
             break;
+        struct file_d newfd;
         
         switch (c)
         {
@@ -126,7 +146,9 @@ int main (int argc, char **argv)
                 }
                 mode |= O_WRONLY;
                 fd = open(argv[optind-1], mode, 0644);
-                addfd(fd);
+                newfd.fd = fd;
+                newfd.peer = -1;
+                addfd(newfd);
                 mode = O_RDONLY;
                 break;
             case RDONLY:
@@ -141,8 +163,10 @@ int main (int argc, char **argv)
                     printf("--rdonly %s\n", argv[optind-1]);
                 }
                 fd = open(argv[optind-1], mode);
+                newfd.fd = fd;
+                newfd.peer = -1;
+                addfd(newfd);
                 if(fd<0) {fprintf(stderr,"--rdonly: %s: No such file\n", argv[optind-1]);}
-                addfd(fd);
                 mode = O_RDONLY;
                 break;
             case COMMAND: //command
@@ -219,6 +243,11 @@ int main (int argc, char **argv)
                     dup2(fd_list[new_job_info.input].fd, 0);
                     dup2(fd_list[new_job_info.output].fd, 1);
                     dup2(fd_list[new_job_info.errorput].fd, 2);
+                    
+                    //we've already redirected fd to 0, 1, 2. So just close all fds other than 0 1 2
+                    //to ensure the correctness of pipe
+                    for(k=0; k < nextfd; k++) close(fd_list[k].fd);
+                    
                     execvp(new_job_info.pro_info[0],new_job_info.pro_info);
                     perror("--command: Execvp failed");
                     exit(-1);
@@ -227,6 +256,33 @@ int main (int argc, char **argv)
                     job_list[nextjob-1].pid = curpid;
                 }
                 break;
+            case WAIT:{
+//Wait for all commands to finish. As each finishes, output its exit status, and a copy of the command (with spaces separating arguments) to standard output.
+                for(k = 0; k < nextfd; k++) {
+                    close(fd_list[k].fd);
+                }
+                int status;
+                int returnpid;
+                int j, m;
+                for(k = 0; k < nextjob; k++) {
+                    returnpid =  waitpid(-1, &status, 0);
+                    if(WIFEXITED(status))
+                        printf("Process %d exit: %d \n", returnpid, WEXITSTATUS(status));
+                    else
+                        printf("Process %d doesn't terminate normally!", returnpid);
+                    for(j=0; j < nextjob; j++) {
+                        if(job_list[j].pid == returnpid) {
+                            printf("--command %d %d %d ", job_list[j].input, job_list[j].output, job_list[j].errorput);
+                            for(m=0; m < job_list[j].paranum; m++) {
+                                printf("%s ", job_list[j].pro_info[m]);
+                            }
+                            printf("\n");
+                            break;
+                        }
+                    }
+                }
+                break;
+            }
             case CREAT: //creat
                 k=0;
                 for( ; optind<argc && !(*argv[optind] == '-' && *(argv[optind]+1) == '-'); optind++) k++;
@@ -295,7 +351,8 @@ int main (int argc, char **argv)
                 for( ; optind<argc && !(*argv[optind] == '-' && *(argv[optind]+1) == '-'); optind++) k++;
                 if(k>=1) fprintf(stderr, "Warnning: --rsync: Too many arguments.\n");
                 if(verbose_flag) printf("--rsync\n");
-                mode |= O_RSYNC;
+//                  mode |= O_RSYNC;
+                    mode = 0;
                 break;
             case SYNC: //sync
                 k=0;
@@ -304,6 +361,101 @@ int main (int argc, char **argv)
                 if(verbose_flag) printf("--sync\n");
                 mode |= O_SYNC;
                 break;
+            case PIPE:{
+                int fd[2];
+                pipe(fd);
+                newfd.fd = fd[0];
+                newfd.peer = fd[1];
+//                printf("pipe is %d, %d \n", fd[1], fd[0]);
+                addfd(newfd);
+                newfd.fd = fd[1];
+                newfd.peer = fd[0];
+                addfd(newfd);
+                break;
+            }
+            case ABORT: {
+                raise(11);
+                break;
+//                int *a = NULL;
+//                int b = *a;
+            }
+            case CLOSE: {
+                k=0;
+                for( ; optind<argc && !(*argv[optind] == '-' && *(argv[optind]+1) == '-'); optind++) k++;
+                if(k>=2) fprintf(stderr, "Warnning: --close: Too many arguments. Use the first one.\n");
+                if(k==0) {
+                    fprintf(stderr, "--close: Require an argument\n");
+                    break;
+                }
+                if(judgenumber(argv[optind-1]) < 0) {
+                    fprintf(stderr, "--close: %s: Argument invalid\n", argv[optind-1]);
+                    break;
+                }
+                if(verbose_flag) {
+                    printf("--close %s\n", argv[optind-1]);
+                }
+                close(fd_list[atoi(argv[optind-1])].fd);
+                break;
+            }
+            
+            case CATCH: {
+                k=0;
+                for( ; optind<argc && !(*argv[optind] == '-' && *(argv[optind]+1) == '-'); optind++) k++;
+                if(k>=2) fprintf(stderr, "Warnning: --catch: Too many arguments. Use the first one.\n");
+                if(k==0) {
+                    fprintf(stderr, "--catch: Require an argument\n");
+                    break;
+                }
+                if(judgenumber(argv[optind-1]) < 0) {
+                    fprintf(stderr, "--catch: %s: Argument invalid\n", argv[optind-1]);
+                    break;
+                }
+                if(verbose_flag) {
+                    printf("--catch %s\n", argv[optind-1]);
+                }
+                signal(atoi(argv[optind-1]), simpsh_handler);
+                break;
+            }
+            case IGNORE: {
+                k=0;
+                for( ; optind<argc && !(*argv[optind] == '-' && *(argv[optind]+1) == '-'); optind++) k++;
+                if(k>=2) fprintf(stderr, "Warnning: --ignore: Too many arguments. Use the first one.\n");
+                if(k==0) {
+                    fprintf(stderr, "--ignore: Require an argument\n");
+                    break;
+                }
+                if(judgenumber(argv[optind-1]) < 0) {
+                    fprintf(stderr, "--ignore: %s: Argument invalid\n", argv[optind-1]);
+                    break;
+                }
+                if(verbose_flag) {
+                    printf("--ignore %s\n", argv[optind-1]);
+                }
+                signal(atoi(argv[optind-1]), SIG_IGN);
+                break;
+            }
+            case DEFAULT: {
+                k=0;
+                for( ; optind<argc && !(*argv[optind] == '-' && *(argv[optind]+1) == '-'); optind++) k++;
+                if(k>=2) fprintf(stderr, "Warnning: --default: Too many arguments. Use the first one.\n");
+                if(k==0) {
+                    fprintf(stderr, "--default: Require an argument\n");
+                    break;
+                }
+                if(judgenumber(argv[optind-1]) < 0) {
+                    fprintf(stderr, "--default: %s: Argument invalid\n", argv[optind-1]);
+                    break;
+                }
+                if(verbose_flag) {
+                    printf("--default %s\n", argv[optind-1]);
+                }
+                signal(atoi(argv[optind-1]), SIG_DFL);
+                break;
+            }
+            case PAUSE: {
+                pause();
+                break;
+            }
             case '?':
                 if (optopt == 'c' || optopt == 'r' || optopt == 'w')
                     fprintf (stderr, "Option -%c requires an argument.\n", optopt);
@@ -320,14 +472,13 @@ int main (int argc, char **argv)
     exit (0);
 }
 
-int addfd(int fd) {
-    if(fd<0) return 0;
+int addfd(struct file_d FileDescripter) {
+    if(FileDescripter.fd<0) return 0;
     if(nextfd>=maxfd) {
         fd_list = (struct file_d*)realloc(fd_list, maxfd*2*sizeof(struct job_d));
         maxfd = maxfd*2;
     }
-    struct file_d new_file_descriptor = {fd};
-    fd_list[nextfd++] = new_file_descriptor;
+    fd_list[nextfd++] = FileDescripter;
     return 1;
 }
 
@@ -346,4 +497,9 @@ int judgenumber(const char* str) {
         str++;
     }
     return 0;
+}
+
+void simpsh_handler(int signum) {
+    fprintf(stderr, "%d caught\n", signum);
+    exit(signum);
 }

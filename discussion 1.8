@@ -95,6 +95,7 @@ int main() {													0644:file permission
             execvp(a[0], a);
         }
         else{
+        Q: why need close? parent didn't use pipe?
             close(fd[0]);
             close(fd[1]);
             int status;
