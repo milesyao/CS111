@@ -19,6 +19,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <signal.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #define MAXFD 1024 //subject to change
 #define MAXJOB 100 //subject to change
@@ -189,6 +191,11 @@ int main (int argc, char **argv)
                             flag = 1;
                             break;
                         }
+			if(fd_list[new_job_info.input].fd == -1) {
+			    fprintf(stderr, "--command: File %s closed \n", argv[optind]);
+			    flag = 1;
+			    break;  
+			}
                     }
                     if(k==1) {
                         if(judgenumber(argv[optind]) < 0) {
@@ -202,6 +209,11 @@ int main (int argc, char **argv)
                             flag = 1;
                             break;
                         }
+			if(fd_list[new_job_info.output].fd == -1) {
+			    fprintf(stderr, "--command: File %s closed \n", argv[optind]);
+			    flag = 1;
+			    break;  
+			}
                     }
                     if(k==2) {
                         if(judgenumber(argv[optind]) < 0) {
@@ -215,6 +227,11 @@ int main (int argc, char **argv)
                             flag = 1;
                             break;
                         }
+			if(fd_list[new_job_info.errorput].fd == -1) {
+			    fprintf(stderr, "--command: File %s closed \n", argv[optind]);
+			    flag = 1;
+			    break;  
+			}
                     }
                     if(k>=3) {
                         if(k-3>=maxpara-1) {
@@ -264,12 +281,13 @@ int main (int argc, char **argv)
                 int status;
                 int returnpid;
                 int j, m;
+                if(verbose_flag) printf("--wait\n");
                 for(k = 0; k < nextjob; k++) {
                     returnpid =  waitpid(-1, &status, 0);
                     if(WIFEXITED(status))
-                        printf("Process %d exit: %d \n", returnpid, WEXITSTATUS(status));
+                        printf("Process exit: %d \n", WEXITSTATUS(status));
                     else
-                        printf("Process %d doesn't terminate normally!", returnpid);
+                        printf("Process doesn't terminate normally!\n");
                     for(j=0; j < nextjob; j++) {
                         if(job_list[j].pid == returnpid) {
                             printf("--command %d %d %d ", job_list[j].input, job_list[j].output, job_list[j].errorput);
@@ -351,8 +369,8 @@ int main (int argc, char **argv)
                 for( ; optind<argc && !(*argv[optind] == '-' && *(argv[optind]+1) == '-'); optind++) k++;
                 if(k>=1) fprintf(stderr, "Warnning: --rsync: Too many arguments.\n");
                 if(verbose_flag) printf("--rsync\n");
-//                  mode |= O_RSYNC;
-                    mode = 0;
+                  mode |= O_RSYNC;
+//                    mode = 0;
                 break;
             case SYNC: //sync
                 k=0;
@@ -362,6 +380,7 @@ int main (int argc, char **argv)
                 mode |= O_SYNC;
                 break;
             case PIPE:{
+                if(verbose_flag) printf("--pipe\n");
                 int fd[2];
                 pipe(fd);
                 newfd.fd = fd[0];
@@ -374,6 +393,7 @@ int main (int argc, char **argv)
                 break;
             }
             case ABORT: {
+                if(verbose_flag) printf("--abort\n");
                 raise(11);
                 break;
 //                int *a = NULL;
@@ -394,8 +414,10 @@ int main (int argc, char **argv)
                 if(verbose_flag) {
                     printf("--close %s\n", argv[optind-1]);
                 }
-                close(fd_list[atoi(argv[optind-1])].fd);
-                break;
+		int file_number = atoi(argv[optind-1]);
+                close(fd_list[file_number].fd);
+                fd_list[file_number].fd = -1;
+		break;
             }
             
             case CATCH: {
@@ -453,6 +475,7 @@ int main (int argc, char **argv)
                 break;
             }
             case PAUSE: {
+                if(verbose_flag) printf("--pause\n");
                 pause();
                 break;
             }

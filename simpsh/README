@@ -11,3 +11,9 @@ Besides, user input is strictly check before utilization. For example,
 4. If the executable fails to execute, error will be printed to screen. 
 
 I used malloc/realloc to dynamically assign space in the program. 
+
+
+Project 1b
+
+This implementation adds --wait option and signal handling functionality to simpsh, as specified on course web.
+

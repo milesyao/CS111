@@ -14,7 +14,7 @@ dist: ${SRCS} ${AUX}
 	-rm -rf `cat .fname`
 
 check:
-	sh test.sh
+	./test.sh 	
 	@echo "Test Finish."
 
 clean:
