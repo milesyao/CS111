@@ -1,0 +1,98 @@
+/* 1.29.2016 p1*/
+
+sample midterm:
+
+1. (cat a.txt & cat b.txt) > out.txt
+
+7. user mode / kernel mode 
+   interrupt instruction number
+
+8. scheduler
+
+/* 1.29.2016 p2*/
+
+If you don't know the answer, always write for something
+
+It depends on your justification, not only your answer. no right or wrong answer;
+
+1) Name some ways m which the processor can transition from user to kernel mode
+   1. system call (internal interrupt)
+   2. external interrupt (timer interrupt) -> clock ticks every 10ms which triggers timer interrupt / keyboard
+   3. page fault (need to know in final, dont need now)
+   4. execute privileged instr from user mode -> INT, LT, halt instruction(idle task) 
+   (syste call needs INT to implememtn, but there are lots of other privileged instr, which makes 1st 4th differnt)
+
+2) Suppose INT does not trap(can't change between user mode to kernel mode) when executing in user mode. how can we implement system calls? (INT XX)
+	1.
+	a) Switch from user to kernel mode
+	b) A way to indicate interrupt code
+	using timer interrupt(mechanism to switch from user to kernel)
+	int main() {
+	...
+		while(true) {
+			asm "jmp" //changing eip, 约定between kernel and user
+	            : "=a"(flag)
+	            : "r"(var1)
+	        if(flag) break; // system call 运行结束时flag＝1，不管成功与否。在运行时flag＝0，使主程序block
+		}
+    ...
+	}
+	should modify kernel: 
+	timer_interrupt_handler {
+							examine eip //info about "jmp" here
+							if eip
+						}
+
+	2. reserve a reserved memory address for a system call
+	   change mode: asm ld 0x0; (only kernel can access this address)
+	                interrupt code (save it in a register)
+	                arguments to system call (save it in a register)
+
+Giving genral ideal and justify it is sufficient. No need to give explicit code
+
+3) In weensyOS1, we implement getpid as a system call, what if we implement it as an ordinary user-space function? Explain pros and cons. (传统做法：pid不存在process address space当中，必须从kernel中取)
+
+pros: faster (don't need to transfer mode, which involves swich buffer....)
+cons: kernel puts the process A's pid into A's address space. Then user can modify it. mark that memory address as rdonly through the page tables entry
+
+4) POSIX requires that a write system call requesting a write of fewer than PIPE_BUF(4KB on Linux) to a pipe must be atomic. A write of more than PIPE_BUF bytes need not be atomic. 
+a) what's the point of this atomicity requirement ?
+ex.
+w1(abcd)
+w2(ef)   ====  =>  6 output => google file system, append file
+w3(kh)
+
+b) suppose your OS can support PIPE_BUF = 2^64 - 1 bytes. What sort of problems do you anticipate having with your OS?
+1. starvation(one long write blocks others)
+   increase PIP_BUF -> increase wiattime
+
+   (
+   in distributed system, precreate a # of threads, and pick one when needed -> what will be the problem if we increase pod size ?  
+   same problem in Amazon Simple Workflow/Google App Engine Task Queue
+   )
+
+6) One way that a process can notify another is via the "kill" system call. Another is via "write" via a pipe. Can you replace "kill" with call "pipe" followed by calls to "write" ?
+
+1) kill
+2) pipe + write
+3) socket-based communication
+
+in order for processes to communicate via pipe, pipe should preceed fork()
+
+we can not use pipe to establish communication between processes that already exist
+
+read costs time
+
+------------
+office hour:
+2:30-4:30 monday
+------------
+
+7. suppose you have a blocking mutex around a shared pipe. Suppose each reader and writer locks the object only for a shor period of time. Can starvation occur?
+
+Scheduler -> key here 
+FIFO -> no starvation
+
+random-> bad lock query can starve
+
+

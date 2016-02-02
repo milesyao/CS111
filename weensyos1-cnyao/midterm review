@@ -1,0 +1,7 @@
+midterm review
+8.
+(a)get garbage data in the registers
+(b)wait on an invalid pid => access out-of-bound index
+(c) wait on itself => infinite wait (by pulling)
+(d) wait on a non-existent process -> until it is assigned to another process and this process exits
+(e) 

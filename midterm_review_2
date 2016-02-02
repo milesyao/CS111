@@ -1,0 +1,60 @@
+midterm review
+8.
+(a)get garbage data in the registers
+(b)wait on an invalid pid => access out-of-bound index
+(c) wait on itself => infinite wait (by pulling)
+(d) wait on a non-existent process -> until it is assigned to another process and this process exits
+(e) infinite wait. No way to check if a process has finished (here will cause resource leak, but at least waitpid will terminate)
+(f) finish waiting immediately with a wrong return status (which is the argument)
+(g) freeze (can't jump out of kernel. pay attention interrupt is not a function called by application, it's in kernel. Without schedule, rip will stick inside kernel code)
+
+2. 
+-open "mouse" fails: no such file
+-cat exits
+-cat exits again and creat an empty file "dog"
+
+--pipe has lowest precedence so it will not respond to the exit status of inner commands
+
+Does it make sense to use SJF in a preemptive scheduler ? 
+SJF + preemption vs SJF + non-preemption
+
+be specific, discuss under what scenerio(which task comes first, time line....) will starvation happen
+talk about own assumption in exam, no single answer for question
+
+bootstrapping code 
+
+           (orthogarlity)
+scheduling algorithm vs soft modularity
+
+hard modularity: mechanism of preventing cross boundary, system will not crash
+soft modularity: coooperation between modules of preventing cross boundary, system will crash
+
+soft modularity: volunterily do something
+
+int fd[2];
+while(!fork()) {
+	pipe(fd);
+}
+
+奇怪的循环，母进程，子进程各搞一次, 没有memory issue
+
+while(!pipe(fd)) {
+	fork();
+}
+
+
+
+
+
+/*
+use up memory before use up fd
+
+exponential to fork. even if we have 2 maximum child process limit (not use limit), we will use up memory*/
+
+
+
+
+
+
+
+

@@ -1,0 +1,150 @@
+1.22
+
+GNU C Library Ref Man
+Avoid bug:
+--close after --wait
+no subcommand after wait
+
+close all fd before executing wait
+
+fork()
+
+1. dup2
+
+2. close all fd
+
+3 -> 
+stdin ->   file
+
+
+process1 process2: same but seperate fd array
+
+only one pipe in system, but can hv multiple wr end, rd end
+
+int waitpid(pid_t pid, int *status, int options);
+options: WNOHANG. No wait
+
+
+(can only be used if child process exit normally)
+WEXITSTATUS(status);
+
+--abort 
+1. raise() SIGSEGV int raise(int signum);
+2. null pointer
+	int *a=NULL;
+	int b = *a;
+
+--close 
+
+
+SIGNAL
+=========
+#include <signal.h> 
+
+1. sighandler_t signal(int signum, sighandler_t action);
+								(sig_handler)
+
+1. SIG_DFL (default)
+2. SIG_IGN (ignore)
+3. void sig_handler(int signum) {
+	
+}
+
+--ignore xx
+--abort
+--default xx
+--abort
+
+kill -s [signum] [pid] 
+
+no long jump; just ignore signal
+
+2. 
+(totally fine to use the signal(). This one is more complicated)
+sigaction(int signum, 
+			const struct sigaction *restrict action, 
+			.......old_action) 
+
+struct sigaction = {
+	sighandler_t sa_handler;
+	sigset_t sa_mask; //signals to block. not used in assignment
+	int sa_flags; // no need to car
+}
+
+void simpsh_handler(int signum) {
+	fprintf(..);
+	exit(signum);
+}
+
+int signum = atoi(optorg);
+struct sigaction simpsh_action;
+simpsh_action.sa_handler = simpsh_handler;
+sigemptyset(&simpsh_action.samask);
+simpsh_action.sa_flags = 0;
+sigatction(sig_num, &simpsh_action, NULL);
+
+signal(sig_num, SIG_IGN);
+
+int pause() for pause
+
+
+Proj 1c
+
+1. profile
+
+2. simpsh bash execline(*)
+   experiment
+
+   CPU time
+   Wall time
+
+   <sys/time.h>
+   <sys/resource.h>
+
+CPU time:
+   int getrusage(int processes, struct rusage *rusage) 
+   1. RUSAGE_SELF
+   2. ....CHILDREN
+
+   struct rusage {
+   	struct timeval ru_utime,
+   	.....ru_stime, 
+   	......
+
+   }
+
+   struct timeval {
+   	time_t tv_sec;
+   	long int tv_usec;
+   }
+
+   1 sec = 1000000 microsecs
+
+   case 'a':
+
+    call1
+    execvp(...)
+    call2
+
+    return the difference
+
+   --command : just report the time in parent process (fork time + some error handling)
+
+   --wait: 1. RUSAGE_SELF data from parent 2. report from child processes
+    call 4 times; 2 before wait; 2 after wait; output difference
+
+Wall time:
+	gettimeofday(struct timeval *, NULL);
+
+	For parent is easy. How to catch child?
+	1. signal handler (catch the signal from child ending)
+	2. call fork two times, return by a pipe
+	Make your own choice
+
+	(double)result.tvsec +
+	result.tv_usec/10000000
+
+
+
+
+

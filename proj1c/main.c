@@ -21,6 +21,8 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/time.h>
+#include <sys/resource.h>
 
 #define MAXFD 1024 //subject to change
 #define MAXJOB 100 //subject to change
@@ -454,8 +456,8 @@ int main (int argc, char **argv)
                 for( ; optind<argc && !(*argv[optind] == '-' && *(argv[optind]+1) == '-'); optind++) k++;
                 if(k>=1) fprintf(stderr, "Warnning: --rsync: Too many arguments.\n");
                 if(verbose_flag) printf("--rsync\n");
-//                  mode |= O_RSYNC;
-                    mode = 0;
+		        mode |= O_RSYNC;
+                //    mode = 0;
                 break;
             case SYNC: //sync
                 k=0;

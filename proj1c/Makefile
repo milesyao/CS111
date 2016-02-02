@@ -1,7 +1,7 @@
-C = gcc
+CC = gcc
 CFLAGS = -Wall -O
 SRCS = main.c 
-AUX = Makefile test.sh README
+AUX = Makefile test.sh README proj1c_report.pdf
 
 all: 
 	${CC} ${CFLAGS} ${SRCS} -o simpsh
